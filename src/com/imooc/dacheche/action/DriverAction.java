@@ -85,6 +85,9 @@ public class DriverAction extends Action {
 				
 				// 接收服务器端返回内容
 				ServerMessage sm = getNet().receiveMessage();
+			
+				sm.getObjMsg();
+			
 				rms.add(sm);
 			}
 			
