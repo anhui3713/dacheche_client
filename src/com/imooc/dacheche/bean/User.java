@@ -40,6 +40,10 @@ public class User implements Serializable {
 	 * 个人介绍
 	 */
 	private String remark;
+	/**
+	 * 电话
+	 */
+	private String phone;
 
 	public String getName() {
 		return name;
@@ -88,4 +92,13 @@ public class User implements Serializable {
 	public void setId(String id) {
 		this.id = id;
 	}
+
+	public String getPhone() {
+		return phone;
+	}
+
+	public void setPhone(String phone) {
+		this.phone = phone;
+	}
+	
 }

@@ -41,7 +41,7 @@ public class MainClass {
 		try {
 			// 创建网络控制对象
 			ClientNetManager net = new ClientNetManager();
-			// 创建客户端操作处理对象
+			// 创建客户端操作处理对象 
 			Action action = Action.newAction(user, net);
 			
 			// 连接服务器端,并获取服务器端返回消息

@@ -1,12 +1,11 @@
 package com.imooc.dacheche.action;
 
 import java.text.MessageFormat;
-import java.util.LinkedList;
 import java.util.List;
-import java.util.Queue;
 
 import com.imooc.dacheche.bean.ClientMessage;
 import com.imooc.dacheche.bean.Log;
+import com.imooc.dacheche.bean.RequestMessage;
 import com.imooc.dacheche.bean.ServerMessage;
 import com.imooc.dacheche.common.InUtils;
 import com.imooc.dacheche.common.OutUtils;
@@ -20,10 +19,9 @@ import com.imooc.dacheche.common.Utils;
 public class DriverAction extends Action {
 
 	private boolean flag = true;
-	// 乘客叫车请求
-	private Queue<ServerMessage> rms = new LinkedList<ServerMessage>();
 	// 接收叫车请求的线程
 	private ReceiveMsgThread rmt = null;
+	private RequestMessage rm;
 	
 	@Override
 	public void execute() {
@@ -49,35 +47,72 @@ public class DriverAction extends Action {
 	 * 查看待打车乘客列表
 	 */
 	private void work() {
-		OutUtils.outMsg("您现在处于上班状态，请等待乘客叫车请求，输入 /下班 进行其他操作。");
-		
 		// 启动接收叫车消息线程
-		rmt = new ReceiveMsgThread();
-		rmt.start();
-		
-		// 接收载客命令输入
-		String command = InUtils.inputCommand("下班");
-		// 下班 停止接收乘客消息
-		if(command.equals("下班")) {
-			rmt.stopReceive();
-			rmt = null;
+		if(rmt == null) {
+			rmt = new ReceiveMsgThread();
 		}
+		new Thread(rmt).start();
+		
+		OutUtils.outMsg("您现在处于上班状态，请等待乘客叫车请求，输入 /下班 进行其他操作。");
+		// 接收司机输入命令并处理
+		workCommand();
 	}
 	
-	
+	/**
+	 * 上班后命令处理,只能输入下班或抢单
+	 */
+	private void workCommand() {
+		// 接收载客命令输入
+		String command = InUtils.inputCommand("下班,抢单");
+		// 如果是输入抢单,并且
+		if(command.equals("抢单")) {
+			// 如果当前有可抢订单,则抢单
+			if(rm != null) {
+				// 构造抢单消息发送到客户端
+				ClientMessage cm = new ClientMessage();
+				cm.setCommand(ClientMessage.REQUEST_ORDER);
+				cm.setMessage(rm.getUser().getId());
+				getNet().sendMessage(cm);
+				
+				// 接收服务器端反馈内容
+				ServerMessage sm = getNet().receiveMessage();
+				switch(sm.getState()) {
+					// 乘客接受
+					case ServerMessage.PASSENGER_ACCEPT:
+						// TODO
+					// 乘客拒绝
+					case ServerMessage.PASSENGER_REJECT: 
+						// TODO
+					// 没找到订单
+					case ServerMessage.ORDER_NOT_FOUND: 
+						// TODO
+				}
+			} 
+			// 如果没有订单,则继续等待司机输入
+			else {
+				OutUtils.outMsg("当前无单可接,请继续等待...");
+				// 继续接受命令输入
+				workCommand();
+			}
+		}
+		// 下班 停止接收乘客消息
+		else if(command.equals("下班")) {
+			rmt.stopReceive();
+		}
+	}
 
 	/**
 	 * 接收叫车请求的线程
 	 * @author Huang Shan
 	 *
 	 */
-	class ReceiveMsgThread extends Thread {
+	class ReceiveMsgThread implements Runnable {
 		
-		private boolean running = true;
+		private boolean getting = true;
 		
 		public void run() {
 			// 循环 接收服务器端消息
-			while(running) {
+			while(getting) {
 				// 主动发起获取当前乘客打车消息
 				ClientMessage cm = new ClientMessage();
 				cm.setCommand(ClientMessage.GET_ORDER);
@@ -85,29 +120,33 @@ public class DriverAction extends Action {
 				
 				// 接收服务器端返回内容
 				ServerMessage sm = getNet().receiveMessage();
-			
-				sm.getObjMsg();
-			
-				rms.add(sm);
+				
+				// 获取一条乘客叫车请求
+				rm = (RequestMessage) sm.getObjMsg();
+				
+				// 如果获取到消息，则显示并停止接收线程
+				if(rm != null) {
+
+					OutUtils.outMsg("==============新订单===============");
+					OutUtils.outMsg("姓名：" + rm.getUser().getName());
+					OutUtils.outMsg("性别：" + rm.getUser().getGender());
+					OutUtils.outMsg("电话：" + rm.getUser().getPhone());
+					OutUtils.outMsg("他说：" + rm.getMessage());
+					OutUtils.outMsg("-----------------------------------");
+					OutUtils.outMsg("输入 /抢单 或 /取消 来操作:");
+					OutUtils.outMsg("===================================");
+					
+					// 结束获取订单的线程
+					getting = false;
+				}
 			}
-			
-			// 清空已经接收到的叫车请求
-			//rms.clear();
 		}
 		
 		/**
 		 * 停止接收
 		 */
 		public void stopReceive() {
-			running = false;
-		}
-		
-		/**
-		 * 是否已经关闭接收线程
-		 * @return
-		 */
-		public boolean isClosed() {
-			return !running;
+			getting = false;
 		}
 	}
 	
