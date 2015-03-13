@@ -2,7 +2,6 @@ package com.imooc.dacheche.common;
 
 import java.io.File;
 import java.io.FileInputStream;
-import java.io.FileOutputStream;
 import java.io.PrintWriter;
 
 import javax.xml.parsers.DocumentBuilder;
@@ -91,7 +90,7 @@ public class XmlUtils {
 			user.setRemark(remark);
 			
 		} catch (Exception e) {
-			//e.printStackTrace();
+			e.printStackTrace();
 			// 解析出错或没找到文件,则算作当前没有登陆过
 			return null;
 		}
@@ -127,7 +126,7 @@ public class XmlUtils {
             DOMSource source = new DOMSource(document);
             transformer.setOutputProperty(OutputKeys.ENCODING, "UTF-8");
             transformer.setOutputProperty(OutputKeys.INDENT, "yes");
-            PrintWriter pw = new PrintWriter(new FileOutputStream(getFile()));
+            PrintWriter pw = new PrintWriter(getFile(), "UTF-8");
             StreamResult result = new StreamResult(pw);
             
             transformer.transform(source, result);
